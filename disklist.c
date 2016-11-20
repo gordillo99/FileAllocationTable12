@@ -18,7 +18,7 @@ void printRootInfo(char * p) {
 	for (i = 0; i < 224; i++) {
 		char c = p_copy[i*32];
 		char type = ' ';
-		char size[] = "          ";
+		int size = 0;
 		char name[] = "                    ";
 		char createDate[] = "                    ";
 		
@@ -36,7 +36,13 @@ void printRootInfo(char * p) {
 			if ((p_copy[i*32 + 11] == 0x10)) type = 'D';
 			else type = 'F';
 			
-			printf("%c %s %s %s\n", type, size, name, createDate);
+			// getting size
+			size = (p_copy[i*32 + 31] | p_copy[i*32 + 30] << 16 | p_copy[i*32 + 29] << 16 | p_copy[i*32 + 28] << 24);
+			
+			// create date and time
+			
+			
+			printf("%c %i %s %s\n", type, size, name, createDate);
 		}
 	}
 }
