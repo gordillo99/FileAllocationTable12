@@ -59,8 +59,8 @@ int countDirectoriesInRoot(char * p) {
 	char * p_copy = p + (19*512); // move to sector 19 (root directory)
 	for (i = 0; i < 224; i++) {
 		char c = p_copy[i*32];
-		if (c == 0x00) break;
-		else if (c != 0xe5 && !(p_copy[i*32 + 11] & 0x0F) && !(p_copy[i*32 + 11] & 0x08)) count++; // check not free (0xef) and no long invalid long name (0x0f) and not volume label (0x08)
+		if ((c & 0xff) == 0x00) break;
+		else if ((c & 0xff) != 0xe5 && !(p_copy[i*32 + 11] & 0x0F) && !(p_copy[i*32 + 11] & 0x08)) count++; // check not free (0xef) and no long invalid long name (0x0f) and not volume label (0x08)
 	}
 	return count; 
 }

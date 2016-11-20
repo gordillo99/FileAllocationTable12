@@ -9,7 +9,23 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/mman.h>
+#include <stdint.h>
 #include "diskinfo.h"
+
+const char *byte_to_binary(int x)
+{
+    static char b[17]; // bits + 1
+    b[0] = '\0';
+
+    int z;
+    for (z = 65536; z > 0; z >>= 1) // z = 2 ^ # of bits
+    {
+        strcat(b, ((x & z) == z) ? "1" : "0");
+    }
+
+    return b;
+}
+
 
 void printRootInfo(char * p) {
 	int count = 0;
@@ -18,7 +34,9 @@ void printRootInfo(char * p) {
 	for (i = 0; i < 224; i++) {
 		char c = p_copy[i*32];
 		char type = ' ';
-		int size = 0;
+		uint32_t  size = 0;
+		uint16_t time = 0;
+		uint16_t date = 0;
 		char name[] = "                    ";
 		char createDate[] = "                    ";
 		
@@ -37,12 +55,34 @@ void printRootInfo(char * p) {
 			else type = 'F';
 			
 			// getting size
-			size = (p_copy[i*32 + 31] | p_copy[i*32 + 30] << 16 | p_copy[i*32 + 29] << 16 | p_copy[i*32 + 28] << 24);
+			size = ((p_copy[i*32 + 28] & 0xff) | ((p_copy[i*32 + 29] << 8) & 0xff) | ((p_copy[i*32 + 30] << 16) & 0xff) | ((p_copy[i*32 + 31] << 24) & 0xff));
 			
-			// create date and time
+			// create time
+			time = (p_copy[i*32 + 14] & 0xff) | ((p_copy[i*32 + 15] & 0xff) << 8);
+
+			int hours = 0;
+			int minutes = 0;
+			int seconds = 0;
 			
+			hours = (time & 0xF800) >> 11;
+			minutes = (time & 0x7E0) >> 5;
+			seconds = time & 0x1f;
+			//printf("%u:%u:%u\n", hours, minutes, seconds * 2);
 			
-			printf("%c %i %s %s\n", type, size, name, createDate);
+			//create date 
+			date = (p_copy[i*32 + 16] & 0xff) | ((p_copy[i*32 + 17] & 0xff) << 8);
+			
+			int day = 0;
+			int month = 0;
+			int year = 0;
+			
+			year = (date & 0xFE00) >> 9;
+			month = (date & 0x1E0) >> 5;
+			day = date & 0x1f;
+
+			printf("%u %u %u\n", day, month, 1980 + year);
+			
+			printf("%c %u %s %s\n", type, size, name, createDate);
 		}
 	}
 }
