@@ -12,6 +12,8 @@
 #include <stdint.h>
 #include "diskinfo.h"
 
+// helper method used for debugging
+// converting bytes to binary
 const char *byte_to_binary(int x)
 {
     static char b[17]; // bits + 1
@@ -26,7 +28,6 @@ const char *byte_to_binary(int x)
     return b;
 }
 
-
 void printRootInfo(char * p) {
 	int count = 0;
 	int i;
@@ -38,7 +39,7 @@ void printRootInfo(char * p) {
 		uint16_t time = 0;
 		uint16_t date = 0;
 		char name[] = "                    ";
-		char createDate[] = "                    ";
+		char createDate[20];
 		
 		if (c == 0x00) break; // if not empty
 		else if (c != 0xe5 && !(p_copy[i*32 + 11] & 0x0F) && !(p_copy[i*32 + 11] & 0x08)) { // check not free (0xef) and no long invalid long name (0x0f) and not volume label (0x08)
@@ -55,19 +56,18 @@ void printRootInfo(char * p) {
 			else type = 'F';
 			
 			// getting size
-			size = ((p_copy[i*32 + 28] & 0xff) | ((p_copy[i*32 + 29] << 8) & 0xff) | ((p_copy[i*32 + 30] << 16) & 0xff) | ((p_copy[i*32 + 31] << 24) & 0xff));
+			size = ((p_copy[i*32 + 28] & 0xff) | ((p_copy[i*32 + 29] & 0xff) << 8) | ((p_copy[i*32 + 30] & 0xff) << 16) | ((p_copy[i*32 + 31]  & 0xff) << 24));
 			
 			// create time
 			time = (p_copy[i*32 + 14] & 0xff) | ((p_copy[i*32 + 15] & 0xff) << 8);
 
 			int hours = 0;
 			int minutes = 0;
-			int seconds = 0;
+			//int seconds = 0;
 			
 			hours = (time & 0xF800) >> 11;
 			minutes = (time & 0x7E0) >> 5;
-			seconds = time & 0x1f;
-			//printf("%u:%u:%u\n", hours, minutes, seconds * 2);
+			//seconds = time & 0x1f;
 			
 			//create date 
 			date = (p_copy[i*32 + 16] & 0xff) | ((p_copy[i*32 + 17] & 0xff) << 8);
@@ -80,7 +80,9 @@ void printRootInfo(char * p) {
 			month = (date & 0x1E0) >> 5;
 			day = date & 0x1f;
 
-			printf("%u %u %u\n", day, month, 1980 + year);
+			//printf("%u/%u/%u\n", day, month, 1980 + year);
+			
+			sprintf(createDate, "%u:%u %u/%u/%u", hours, minutes, day, month, 1980 + year);
 			
 			printf("%c %u %s %s\n", type, size, name, createDate);
 		}
