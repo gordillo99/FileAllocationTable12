@@ -79,8 +79,6 @@ void printRootInfo(char * p) {
 			year = (date & 0xFE00) >> 9;
 			month = (date & 0x1E0) >> 5;
 			day = date & 0x1f;
-
-			//printf("%u/%u/%u\n", day, month, 1980 + year);
 			
 			sprintf(createDate, "%u:%u %u/%u/%u", hours, minutes, day, month, 1980 + year);
 			
