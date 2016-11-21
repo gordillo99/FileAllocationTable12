@@ -24,7 +24,7 @@ int getTotalNumberOfSectors(char * p) {
 int getSectorValue(char * p, int i) {
 	int offset = (i * 3) / 2;
 	char * fat = p + 512; // skip first sector to reach FAT
-	int value = fat[offset + 0] | (fat[offset + 1] << 8) | (fat[offset + 2] << 16);
+	int value = (fat[offset] & 0xff) | ((fat[offset + 1] & 0xff) << 8) | ((fat[offset + 2] & 0xff) << 16);
 
 	if ((i % 2) == 0) {
 		value &= 0xfff;
@@ -41,6 +41,8 @@ int getFreeSize(int totalNumberOfSectors, char * p) {
 	for (i = 2; i < totalNumberOfSectors; i++) {
 		if (getSectorValue(p, i) == 0) {
 			count++;
+		} else {
+			printf("ENTRY %d: value: %d\n", i, getSectorValue(p, i));
 		}
 	}
 	return count * 512;
