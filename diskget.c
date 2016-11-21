@@ -90,15 +90,16 @@ int checkFAT(char * p, int index) {
 
 void writeFile(char * fileName, char * p, int * error, int nextLogicalCluster) {
 	FILE *write_ptr;
-	char byte;
+	char byte[1];
 	write_ptr = fopen(fileName,"wb");  // w for write, b for binary
-	
+	int sizeOfSector = (p[22] & 0xff) | ((p[23] & 0xff) << 8);
+	printf("bytes per sector %d %x %x \n", sizeOfSector, p[23] & 0xff, p[22] & 0xff);
 	 while (checkNextLogicalCluster(nextLogicalCluster, error)) {
 	 	int physicalCluster = 33 + nextLogicalCluster - 2;
 	 	int i;
-	 	for (i = 0; i < 512; i++) {
-	 		byte = p[physicalCluster*512 + i] & 0xff;
-	 		fwrite(byte,sizeof(byte),1,write_ptr); 
+	 	for (i = 0; i < 512*18*80; i++) {
+	 		byte[0] = (p[physicalCluster*512 + i] & 0xff);
+	 		fwrite(byte, sizeof(byte), 1, write_ptr); 
 	 	}
 			
 		nextLogicalCluster = checkFAT(p, nextLogicalCluster);
@@ -125,7 +126,7 @@ int main (int argc, char *argv[]) {
 			exit(EXIT_FAILURE);
 		}
 		
-		printf("%d\n", nextLogicalCluster);
+		//printf("%d\n", nextLogicalCluster);
 		
 		writeFile(argv[2], p, &error, nextLogicalCluster);
 		
