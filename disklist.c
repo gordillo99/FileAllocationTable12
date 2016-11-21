@@ -10,7 +10,6 @@
 #include <sys/stat.h>
 #include <sys/mman.h>
 #include <stdint.h>
-#include "diskinfo.h"
 
 // helper method used for debugging
 // converting bytes to binary
