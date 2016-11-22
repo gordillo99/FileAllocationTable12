@@ -109,6 +109,7 @@ int main (int argc, char *argv[]) {
 	free(osname);
 	free(label);
 	close(fd);
+	munmap(p, sf.st_size);
 
 	return 0;
 }

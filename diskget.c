@@ -195,6 +195,7 @@ int main (int argc, char *argv[]) {
 	}
 
 	close(fd);
+	munmap(p, sf.st_size);
 
 	return 0;
 }
