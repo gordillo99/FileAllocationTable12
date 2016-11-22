@@ -9,6 +9,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/mman.h>
+#include <stdint.h>
 
 void getOSName(char * p, char * osName) {
 	int i;
@@ -24,12 +25,24 @@ int getTotalNumberOfSectors(char * p) {
 int getSectorValue(char * p, int i) {
 	int offset = (i * 3) / 2;
 	char * fat = p + 512; // skip first sector to reach FAT
-	int value = (fat[offset] & 0xff) | ((fat[offset + 1] & 0xff) << 8) | ((fat[offset + 2] & 0xff) << 16);
+	uint16_t value = 0;
 
 	if ((i % 2) == 0) {
-		value &= 0xfff;
+		int low = fat[offset + 1] & 0xff;
+		int high = fat[offset] & 0xff;
+		value = value | low;
+		value = value << 8;
+		value = value & 0xF00;
+		value = value | high;
+
 	} else {
-		value >>= 12;
+		int low = fat[offset + 1] & 0xff;
+		int high = fat[offset] & 0xff;
+		value = value | low;
+		value = value << 8;
+		value = value & 0xFF00;
+		value = value | high;
+		value = value >> 4;
 	}
 
 	return value;
@@ -41,8 +54,6 @@ int getFreeSize(int totalNumberOfSectors, char * p) {
 	for (i = 2; i < totalNumberOfSectors; i++) {
 		if (getSectorValue(p, i) == 0) {
 			count++;
-		} else {
-			printf("ENTRY %d: value: %d\n", i, getSectorValue(p, i));
 		}
 	}
 	return count * 512;

@@ -51,31 +51,31 @@ int getSectorValue(char * p, int i) {
 		int low = fat[offset + 1] & 0xff;
 		int high = fat[offset] & 0xff;
 
-			printf("with i = %d entry (3*i/2): %d hex: %x entry %d (3*i/2)+1 %x \n", i, offset, fat[offset] & 0xff, offset+1, fat[offset + 1] & 0xff);
-			printf("lower %s\n", byte_to_binary(low));
-			printf("higher %s\n", byte_to_binary(high));
+			//printf("with i = %d entry (3*i/2): %d hex: %x entry %d (3*i/2)+1 %x \n", i, offset, fat[offset] & 0xff, offset+1, fat[offset + 1] & 0xff);
+			//printf("lower %s\n", byte_to_binary(low));
+			//printf("higher %s\n", byte_to_binary(high));
 			value = value | low;
-			printf("result %s\n", byte_to_binary16(value));
+			//printf("result %s\n", byte_to_binary16(value));
 			value = value << 8;
-			printf("result %s\n", byte_to_binary16(value));
+			//printf("result %s\n", byte_to_binary16(value));
 			value = value & 0xF00;
 			value = value | high;
-			printf("result %s\n", byte_to_binary16(value));
+			//printf("result %s\n", byte_to_binary16(value));
 
 	} else {
 		int low = fat[offset + 1] & 0xff;
 		int high = fat[offset] & 0xff;
 		
-			printf("with i = %d entry (3*i/2): %d hex: %x entry %d (3*i/2)+1 %x \n", i, offset, fat[offset] & 0xff, offset+1, fat[offset + 1] & 0xff);
-			printf("lower %s\n", byte_to_binary(low));
-			printf("higher %s\n", byte_to_binary(high));
+			//printf("with i = %d entry (3*i/2): %d hex: %x entry %d (3*i/2)+1 %x \n", i, offset, fat[offset] & 0xff, offset+1, fat[offset + 1] & 0xff);
+			//printf("lower %s\n", byte_to_binary(low));
+			//printf("higher %s\n", byte_to_binary(high));
 			value = value | low;
-			printf("result %s\n", byte_to_binary16(value));
+			//printf("result %s\n", byte_to_binary16(value));
 			value = value << 8;
 			value = value & 0xFF00;
 			value = value | high;
 			value = value >> 4;
-			printf("result %s\n", byte_to_binary16(value));
+			//printf("result %s\n", byte_to_binary16(value));
 	}
 
 	return value;
@@ -149,24 +149,20 @@ void writeFile(char * fileName, char * p, int * error, int nextLogicalCluster, i
 	FILE *write_ptr;
 	char byte[1];
 	write_ptr = fopen(fileName,"wb");  // w for write, b for binary
-	int sizeOfSector = (p[22] & 0xff) | ((p[23] & 0xff) << 8);
-	printf("bytes per sector %d %x %x \n", sizeOfSector, p[23] & 0xff, p[22] & 0xff);
-	 while (checkNextLogicalCluster(n, error)) {
-	  
+	
+	while (checkNextLogicalCluster(n, error)) {
 	 	int physicalCluster = 33 + n - 2;
 	 	int i;
 	 	for (i = 0; i < 512; i++) {
 	 		byte[0] = (p[physicalCluster*512 + i] & 0xff);
-	 		//if (byte[0] == 0x00) break; // might not need this
+	 		
 	 		if (size > 0) {
 	 			fwrite(byte, sizeof(byte), 1, write_ptr);
 	 			size--;
 	 		}
 	 	}
-			
-		printf("current sector value %d \n", n);
+
 		n = checkFAT(p, n);
-		printf("next sector value %d \n", n);
 	}
 	
 	fclose(write_ptr);
