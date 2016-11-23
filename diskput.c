@@ -10,6 +10,7 @@
 #include <sys/stat.h>
 #include <sys/mman.h>
 #include <stdint.h>
+#include <time.h>
 
 /*
 open(check) file to be copied in current dir
@@ -70,7 +71,7 @@ int getFreeSize(int totalNumberOfSectors, char * p) {
 	return count * 512;
 }
 
-void findFirstAvailableRootEntry(char * p) {
+int findFirstAvailableRootEntry(char * p) {
 	int i;
 	char * p_copy = p + (19*512); // move to sector 19 (root directory)
 	for (i = 0; i < 224; i++) {
@@ -88,12 +89,23 @@ int hasExtension(char * filename, int namelen) {
 	return 0;
 }
 
-void addRootDirEntry(char * p, char * size, int offset, char * filename, int filesize) {
+int findAvailFATEntry(char * p) {
+	int i;
+	int totalNumberOfSectors = (int) (p[19] | p[20] << 8);
+	for (i = 2; i < totalNumberOfSectors; i++) {
+		if (getSectorValue(p, i) == 0) break;
+	}
+	return i;
+}
+
+
+int addRootDirEntry(char * p, char * src, int offset, char * filename, int filesize) {
 	int i;
 	int ext_index;
 	int namelen = strlen(filename);
 	int hasExt = hasExtension(filename, namelen);
 	
+	// add filename
 	if (namelen > 12) { printf("Error: filename too big"); exit(EXIT_FAILURE); }
 	
 	if (hasExt) {
@@ -103,15 +115,109 @@ void addRootDirEntry(char * p, char * size, int offset, char * filename, int fil
 			for (; i < 8; i++) p[offset + i] = 0x20; // insert spaces until reaching ext
 		}
 		int j;
-		for () 
+		//for () 
 	} else {
 		for (i = 0; i < namelen; i++) p[offset + i] = toupper(*(filename + i)) & 0xff;
 		for (; i < 11; i++) p[offset + i] = 0x20; // insert spaces until reaching end
 	}
 	
-	for (i = 0; i < namelen; i++) {
+	// writing attributes
+	p[offset + 11] = 0x00;
 	
+	// writing time and date
+	time_t rawtime;
+  struct tm *info;
+
+  time(&rawtime);
+  info = localtime(&rawtime);
+  
+  uint16_t seconds = info->tm_sec / 2;
+  uint16_t minutes = info->tm_min;
+  uint16_t hours = info->tm_hour;
+  uint16_t day = info->tm_mday;
+  uint16_t month = info->tm_mon;
+  uint16_t year = info->tm_year - 80;
+  
+  uint8_t timebits = 0;
+  timebits &= year;
+  timebits = timebits << 4;
+  timebits &= month;
+  timebits = timebits << 4;
+  timebits &= day;
+  
+  uint8_t datebits = 0;
+  datebits &= year;
+  datebits = datebits << 4;
+  datebits &= month;
+  datebits = datebits << 4;
+  datebits &= day;
+  
+  // setting creation time
+  p[offset + 14] = timebits & 0xff;
+  timebits = timebits >> 8;
+  p[offset + 15] = timebits & 0xff;
+  
+  // setting creation date
+  p[offset + 16] = datebits & 0xff;
+  datebits = datebits >> 8;
+  p[offset + 17] = datebits & 0xff; 
+  
+  // setting last access date 
+	p[offset + 18] = datebits & 0xff;
+  datebits = datebits >> 8;
+  p[offset + 19] = datebits & 0xff; 
+  
+  // setting last write time
+  p[offset + 22] = timebits & 0xff;
+  timebits = timebits >> 8;
+  p[offset + 23] = timebits & 0xff;
+  
+  // setting last write date 
+	p[offset + 24] = datebits & 0xff;
+  datebits = datebits >> 8;
+  p[offset + 25] = datebits & 0xff; 
+  
+  uint32_t fsize = filesize;
+  
+  // writing size 
+  p[offset + 28] = fsize & 0xff;
+  fsize = fsize >> 8;
+  p[offset + 29] = fsize & 0xff;
+  fsize = fsize >> 8;
+  p[offset + 30] = fsize & 0xff;
+  fsize = fsize >> 8;
+  p[offset + 31] = fsize & 0xff;
+  
+  // find available fat entry 
+  int16_t availFAT = findAvailFATEntry(p);
+	
+	p[offset + 26] = availFAT & 0xff;
+  availFAT = availFAT >> 8;
+  p[offset + 27] = availFAT & 0xff;
+	
+	return availFAT;
+}
+
+void writeToFATTable(char* p, int target, int src) {
+
+}
+ 
+void writeToDataArea(char * p, char * src, int size, int FATEntry) {
+	int bytesWritten = 0;
+	int i;
+	
+	while (bytesWritten < size) {
+		int previousFATEntry = FATEntry;
+		int physicalCluster = 33 + FATEntry - 2;
+		for (i = 0; i < 512 ; i++, bytesWritten++) {
+			if (bytesWritten == size) break;
+			p[physicalCluster*512 + i] = src[i] & 0xff;
+		}
+		FATEntry = findAvailFATEntry(p);
+		writeToFATTable(p, previousFATEntry, FATEntry);
 	}
+	
+	writeToFATTable(p, previousFATEntry, 0);
 }
 
 int main (int argc, char *argv[]) {
@@ -135,15 +241,15 @@ int main (int argc, char *argv[]) {
 			p = mmap(NULL, sf.st_size, PROT_WRITE, MAP_SHARED, fd, 0);
 			if (src_size > getFreeSize(getTotalNumberOfSectors(p), p)) { printf("Error: Not enough free space in disk image."); exit(EXIT_FAILURE); }
 			int offsetFirstAvailDir = findFirstAvailableRootEntry(p);
-			
+			int firstFATentry = addRootDirEntry(p, src, offsetFirstAvailDir, argv[1], src_size);
 			
 		}
 	}
 	
-	close(fd);
-	close(fd2);
 	munmap(src, src_size);
 	munmap(p, sf.st_size);
-
+	close(fd);
+	close(fd2);
+	
 	return 0;
 }
