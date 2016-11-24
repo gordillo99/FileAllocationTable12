@@ -135,7 +135,7 @@ int addRootDirEntry(char * p, char * src, int offset, char * filename, int files
 	int ext_index;
 	int namelen = strlen(filename);
 	int hasExt = hasExtension(filename, namelen);
-	printf("has ext %d\n", hasExt);
+
 	// add filename
 	if (namelen > 12) { printf("Error: filename too big"); exit(EXIT_FAILURE); }
 	
@@ -250,9 +250,6 @@ void writeToFATTable(char* p, int target, int src) {
 		previouslow = previouslow | low;
 		p[512 + (3*target)/2] = previouslow & 0xff;
 	}
-	
-	printf("wrote %d in entry %d\n", getSectorValue(p, target), target);
-	printf(" %s\n", byte_to_binary16(getSectorValue(p, target)));
 }
  
 void writeToDataArea(char * p, char * src, int size, int FATEntry) {
