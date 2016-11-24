@@ -49,7 +49,7 @@ int getSectorValue(char * p, int i) {
 }
 
 int getFreeSize(int totalNumberOfSectors, char * p) {
-	int count = 1;
+	int count = 0;
 	int i;
 	for (i = 2; i < totalNumberOfSectors; i++) {
 		if (getSectorValue(p, i) == 0) {

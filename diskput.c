@@ -71,7 +71,7 @@ int getTotalNumberOfSectors(char * p) {
 }
 
 int getFreeSize(int totalNumberOfSectors, char * p) {
-	int count = 1;
+	int count = 0;
 	int i;
 	for (i = 2; i < totalNumberOfSectors; i++) {
 		if (getSectorValue(p, i) == 0) {
@@ -160,23 +160,24 @@ int addRootDirEntry(char * p, char * src, int offset, char * filename, int files
   uint16_t minutes = info->tm_min;
   uint16_t hours = info->tm_hour;
   uint16_t day = info->tm_mday;
-  uint16_t month = info->tm_mon;
-  uint16_t year = info->tm_year - 80;
+  uint16_t month = info->tm_mon + (int) 1;
+  uint16_t year = info->tm_year - (int) 80;
   
-  uint8_t timebits = 0;
-  timebits &= year;
-  timebits = timebits << 4;
-  timebits &= month;
-  timebits = timebits << 4;
-  timebits &= day;
+  uint16_t timebits = 0;
+  timebits |= hours;
+  timebits = timebits << 6;
+  timebits |= minutes;
+  timebits = timebits << 5;
+  timebits |= seconds;
   
-  uint8_t datebits = 0;
-  datebits &= year;
+  uint16_t datebits = 0;
+  datebits |= year;
   datebits = datebits << 4;
-  datebits &= month;
-  datebits = datebits << 4;
-  datebits &= day;
-  
+  datebits |= month;
+  datebits = datebits << 5;
+  datebits |= day;
+
+
   // setting creation time
   p[offset + 14] = timebits & 0xff;
   timebits = timebits >> 8;
