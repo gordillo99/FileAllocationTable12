@@ -30,6 +30,34 @@ close disk file
 close file
 */
 
+const char *byte_to_binary(int x)
+{
+    static char b[9]; // bits + 1
+    b[0] = '\0';
+
+    int z;
+    for (z = 256; z > 0; z >>= 1) // z = 2 ^ # of bits
+    {
+        strcat(b, ((x & z) == z) ? "1" : "0");
+    }
+
+    return b;
+}
+
+const char *byte_to_binary16(int x)
+{
+    static char b[17]; // bits + 1
+    b[0] = '\0';
+
+    int z;
+    for (z = 65536; z > 0; z >>= 1) // z = 2 ^ # of bits
+    {
+        strcat(b, ((x & z) == z) ? "1" : "0");
+    }
+
+    return b;
+}
+
 int getSectorValue(char * p, int i) {
 	int offset = (i * 3) / 2;
 	char * fat = p + 512; // skip first sector to reach FAT
@@ -86,16 +114,16 @@ int findFirstAvailableRootEntry(char * p) {
 int hasExtension(char * filename, int namelen) {
 	int i;
 	for (i = 0; i < namelen; i++) {
-		printf("character %c", *(filename + i));
 		if (*(filename + i) == '.') return 1;
 	}
 	return 0;
 }
 
 int findAvailFATEntry(char * p) {
-	int i;
+	int i = 2;
 	int totalNumberOfSectors = (int) (p[19] | p[20] << 8);
-	for (i = 2; i < totalNumberOfSectors; i++) {
+	
+	for (; i < totalNumberOfSectors; i++) {
 		if (getSectorValue(p, i) == 0) break;
 	}
 	return i;
@@ -120,11 +148,9 @@ int addRootDirEntry(char * p, char * src, int offset, char * filename, int files
 		int j;
 		//for () 
 	} else {
-		for (i = 0; i < namelen; i++) { p[offset + i] = toupper(*(filename + i)) & 0xff; printf("writing %c", toupper(*(filename + i))); }
-		for (; i < 11; i++) { p[offset + i] = 0x20; printf("writing space\n"); } // insert spaces until reaching end
+		for (i = 0; i < namelen; i++) { p[offset + i] = toupper(*(filename + i)) & 0xff; }
+		for (; i < 11; i++) { p[offset + i] = 0x20; } // insert spaces until reaching end
 	}
-	
-	printf("wrote filename \n");
 	
 	// writing attributes
 	p[offset + 11] = 0x00;
@@ -195,51 +221,58 @@ int addRootDirEntry(char * p, char * src, int offset, char * filename, int files
   
   // find available fat entry 
   int16_t availFAT = findAvailFATEntry(p);
-	
+  int16_t fatEntry = availFAT;
 	p[offset + 26] = availFAT & 0xff;
   availFAT = availFAT >> 8;
   p[offset + 27] = availFAT & 0xff;
 	
-	return availFAT;
+	return fatEntry;
 }
 
 void writeToFATTable(char* p, int target, int src) {
+
 	if (target % 2 == 0) {
 		uint8_t low = src & 0xff;
 		uint8_t high = (src >> 8) & 0xf;
 		p[512 + (3*target)/2] = low & 0xff;
 		uint8_t previoushigh = p[512 + (3*target)/2 + 1];
 		previoushigh &= 0xf0;
-		previoushigh &= high;
+		previoushigh |= high;
 		p[512 + (3*target)/2 + 1] = previoushigh & 0xff;
 	} else {
 		uint8_t high = (src >> 4) & 0xff;
 		uint8_t low = src & 0xf;
 		p[512 + (3*target)/2 + 1] = high & 0xff;
 		uint8_t previouslow = p[512 + (3*target)/2];
+		
 		previouslow &= 0xf;
-		previouslow &= (low << 4);
+		low = (low << 4);
+		previouslow = previouslow | low;
 		p[512 + (3*target)/2] = previouslow & 0xff;
 	}
+	
+	printf("wrote %d in entry %d\n", getSectorValue(p, target), target);
+	printf(" %s\n", byte_to_binary16(getSectorValue(p, target)));
 }
  
 void writeToDataArea(char * p, char * src, int size, int FATEntry) {
 	int bytesWritten = 0;
 	int i;
 	int previousFATEntry = -1;
-	
+
 	while (bytesWritten < size) {
 		previousFATEntry = FATEntry;
 		int physicalCluster = 33 + FATEntry - 2;
 		for (i = 0; i < 512 ; i++, bytesWritten++) {
-			if (bytesWritten == size) break;
+			if (bytesWritten == size) { break; }
 			p[physicalCluster*512 + i] = src[i] & 0xff;
 		}
+		if (bytesWritten == size) { break; }
 		FATEntry = findAvailFATEntry(p);
 		writeToFATTable(p, (uint16_t) previousFATEntry, (uint16_t) FATEntry);
 	}
 	
-	writeToFATTable(p, previousFATEntry, 0);
+	writeToFATTable(p, previousFATEntry, 4095);
 }
 
 int main (int argc, char *argv[]) {
@@ -265,7 +298,6 @@ int main (int argc, char *argv[]) {
 			int totalNumSectors = getTotalNumberOfSectors(p);
 			if (src_size > getFreeSize(totalNumSectors, p)) { printf("Error: Not enough free space in disk image."); exit(EXIT_FAILURE); }
 			int offsetFirstAvailDir = findFirstAvailableRootEntry(p);
-			printf("%d offsetFirstAvailDir", offsetFirstAvailDir);
 			int firstFATentry = addRootDirEntry(p, src, offsetFirstAvailDir, argv[2], src_size);
 			writeToDataArea(p, src, src_size, firstFATentry);
 		}

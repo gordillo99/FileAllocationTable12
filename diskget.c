@@ -51,31 +51,20 @@ int getSectorValue(char * p, int i) {
 		int low = fat[offset + 1] & 0xff;
 		int high = fat[offset] & 0xff;
 
-			//printf("with i = %d entry (3*i/2): %d hex: %x entry %d (3*i/2)+1 %x \n", i, offset, fat[offset] & 0xff, offset+1, fat[offset + 1] & 0xff);
-			//printf("lower %s\n", byte_to_binary(low));
-			//printf("higher %s\n", byte_to_binary(high));
 			value = value | low;
-			//printf("result %s\n", byte_to_binary16(value));
 			value = value << 8;
-			//printf("result %s\n", byte_to_binary16(value));
 			value = value & 0xF00;
 			value = value | high;
-			//printf("result %s\n", byte_to_binary16(value));
 
 	} else {
 		int low = fat[offset + 1] & 0xff;
 		int high = fat[offset] & 0xff;
-		
-			//printf("with i = %d entry (3*i/2): %d hex: %x entry %d (3*i/2)+1 %x \n", i, offset, fat[offset] & 0xff, offset+1, fat[offset + 1] & 0xff);
-			//printf("lower %s\n", byte_to_binary(low));
-			//printf("higher %s\n", byte_to_binary(high));
+	
 			value = value | low;
-			//printf("result %s\n", byte_to_binary16(value));
 			value = value << 8;
 			value = value & 0xFF00;
 			value = value | high;
 			value = value >> 4;
-			//printf("result %s\n", byte_to_binary16(value));
 	}
 
 	return value;
@@ -91,11 +80,17 @@ void getFileName(char * p, int entry, char * name) {
 			i++;
 		}
 	}
-	name[i] = '.';
-	i++;
-	for (; j < 12; j++) {
-		name[i] = p[entry*32 + j]; // move p_copy one back since name is ahead because of the .
+	
+	if (p[entry*32 + 10] != ' ' && p[entry*32 + 9] != ' ' && p[entry*32 + 8] != ' ') { // if it has an extension
+		name[i] = '.';
 		i++;
+	}
+	
+	for (; j < 12; j++) {
+		if (p[entry*32 + j] != ' ') {
+			name[i] = p[entry*32 + j]; // move p_copy one back since name is ahead because of the .
+			i++;
+		}
 	}
 	name[12] = '\0';
 }
@@ -186,7 +181,7 @@ int main (int argc, char *argv[]) {
 			printf("File not found\n");
 			exit(EXIT_FAILURE);
 		}
-		
+
 		writeFile(argv[2], p, &error, nextLogicalCluster, file_size);
 		
 		if (error == -1) { printf("Error: reserved cluster found"); close(fd); exit(EXIT_FAILURE); }
