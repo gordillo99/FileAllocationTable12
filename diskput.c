@@ -57,12 +57,15 @@ int getSectorValue(char * p, int i) {
 }
 
 int getTotalNumberOfSectors(char * p) {
+	printf("%c\n", p[454]);
+	printf("waaat\n");
 	return (int) (p[19] | p[20] << 8);
 }
 
 int getFreeSize(int totalNumberOfSectors, char * p) {
 	int count = 1;
 	int i;
+	printf("getting free size\n");
 	for (i = 2; i < totalNumberOfSectors; i++) {
 		if (getSectorValue(p, i) == 0) {
 			count++;
@@ -120,6 +123,8 @@ int addRootDirEntry(char * p, char * src, int offset, char * filename, int files
 		for (i = 0; i < namelen; i++) p[offset + i] = toupper(*(filename + i)) & 0xff;
 		for (; i < 11; i++) p[offset + i] = 0x20; // insert spaces until reaching end
 	}
+	
+	printf("wrote filename \n");
 	
 	// writing attributes
 	p[offset + 11] = 0x00;
@@ -199,22 +204,39 @@ int addRootDirEntry(char * p, char * src, int offset, char * filename, int files
 }
 
 void writeToFATTable(char* p, int target, int src) {
-
+	if (target % 2 == 0) {
+		uint8_t low = src & 0xff;
+		uint8_t high = (src >> 8) & 0xf;
+		p[512 + (3*target)/2] = low & 0xff;
+		uint8_t previoushigh = p[512 + (3*target)/2 + 1];
+		previoushigh &= 0xf0;
+		previoushigh &= high;
+		p[512 + (3*target)/2 + 1] = previoushigh & 0xff;
+	} else {
+		uint8_t high = (src >> 4) & 0xff;
+		uint8_t low = src & 0xf;
+		p[512 + (3*target)/2 + 1] = high & 0xff;
+		uint8_t previouslow = p[512 + (3*target)/2];
+		previouslow &= 0xf;
+		previouslow &= (low << 4);
+		p[512 + (3*target)/2] = previouslow & 0xff;
+	}
 }
  
 void writeToDataArea(char * p, char * src, int size, int FATEntry) {
 	int bytesWritten = 0;
 	int i;
+	int previousFATEntry = -1;
 	
 	while (bytesWritten < size) {
-		int previousFATEntry = FATEntry;
+		previousFATEntry = FATEntry;
 		int physicalCluster = 33 + FATEntry - 2;
 		for (i = 0; i < 512 ; i++, bytesWritten++) {
 			if (bytesWritten == size) break;
 			p[physicalCluster*512 + i] = src[i] & 0xff;
 		}
 		FATEntry = findAvailFATEntry(p);
-		writeToFATTable(p, previousFATEntry, FATEntry);
+		writeToFATTable(p, (uint16_t) previousFATEntry, (uint16_t) FATEntry);
 	}
 	
 	writeToFATTable(p, previousFATEntry, 0);
@@ -230,19 +252,23 @@ int main (int argc, char *argv[]) {
 	int src_size = 0;
 	
 	if (fd2 = open(argv[2], O_RDONLY)) {
+		
 		if (fd2 < 0) { printf("Error: File %s not found.", argv[2]); exit(EXIT_FAILURE); }
 		fstat(fd2, &sf2);
 		
 		src_size = sf2.st_size;
 		src = mmap(NULL, src_size, PROT_READ, MAP_SHARED, fd2, 0);
-		
-		if (fd = open(argv[1], O_RDONLY)) {
+
+		if (fd = open(argv[1], O_RDWR)) {
 			fstat(fd, &sf);
-			p = mmap(NULL, sf.st_size, PROT_WRITE, MAP_SHARED, fd, 0);
-			if (src_size > getFreeSize(getTotalNumberOfSectors(p), p)) { printf("Error: Not enough free space in disk image."); exit(EXIT_FAILURE); }
+			p = mmap(NULL, sf.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+			int totalNumSectors = getTotalNumberOfSectors(p);
+			if (src_size > getFreeSize(totalNumSectors, p)) { printf("Error: Not enough free space in disk image."); exit(EXIT_FAILURE); }
+			printf("about to look for available root entry\n");
 			int offsetFirstAvailDir = findFirstAvailableRootEntry(p);
+			printf("%d offsetFirstAvailDir", offsetFirstAvailDir);
 			int firstFATentry = addRootDirEntry(p, src, offsetFirstAvailDir, argv[1], src_size);
-			
+			writeToDataArea(p, src, src_size, firstFATentry);
 		}
 	}
 	
