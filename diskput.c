@@ -129,6 +129,18 @@ int findAvailFATEntry(char * p) {
 	return i;
 }
 
+int findNextAvailFATEntry(char * p) {
+	int i = 2;
+	int totalNumberOfSectors = (int) (p[19] | p[20] << 8);
+	int flag = 0;
+	
+	for (; i < totalNumberOfSectors; i++) {
+		if (getSectorValue(p, i) == 0 && flag) break;
+		if (getSectorValue(p, i) == 0) flag = 1;
+	}
+	return i;
+}
+
 
 int addRootDirEntry(char * p, char * src, int offset, char * filename, int filesize) {
 	int i;
@@ -225,7 +237,7 @@ int addRootDirEntry(char * p, char * src, int offset, char * filename, int files
 	p[offset + 26] = availFAT & 0xff;
   availFAT = availFAT >> 8;
   p[offset + 27] = availFAT & 0xff;
-	
+	printf("first fat entry: %d\n", fatEntry);
 	return fatEntry;
 }
 
@@ -250,22 +262,29 @@ void writeToFATTable(char* p, int target, int src) {
 		previouslow = previouslow | low;
 		p[512 + (3*target)/2] = previouslow & 0xff;
 	}
+	
+	printf("wrote %d to fat entry %d\n", getSectorValue(p, target), target);
 }
  
 void writeToDataArea(char * p, char * src, int size, int FATEntry) {
 	int bytesWritten = 0;
 	int i;
 	int previousFATEntry = -1;
+	printf("size %d\n", size);
 
 	while (bytesWritten < size) {
 		previousFATEntry = FATEntry;
 		int physicalCluster = 33 + FATEntry - 2;
+		int refPoint = bytesWritten;
 		for (i = 0; i < 512 ; i++, bytesWritten++) {
 			if (bytesWritten == size) { break; }
-			p[physicalCluster*512 + i] = src[i] & 0xff;
+			p[physicalCluster*512 + i] = src[i + refPoint] & 0xff;
 		}
+		printf("so far %d bytes have been written\n", bytesWritten);
 		if (bytesWritten == size) { break; }
-		FATEntry = findAvailFATEntry(p);
+		FATEntry = findNextAvailFATEntry(p);
+		printf("prev avail fat entry: %d\n", previousFATEntry);
+		printf("next avail fat entry: %d\n", FATEntry);
 		writeToFATTable(p, (uint16_t) previousFATEntry, (uint16_t) FATEntry);
 	}
 	
@@ -287,6 +306,7 @@ int main (int argc, char *argv[]) {
 		fstat(fd2, &sf2);
 		
 		src_size = sf2.st_size;
+		printf("file size %d\n", src_size);
 		src = mmap(NULL, src_size, PROT_READ, MAP_SHARED, fd2, 0);
 
 		if (fd = open(argv[1], O_RDWR)) {
