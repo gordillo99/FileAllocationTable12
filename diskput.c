@@ -12,34 +12,6 @@
 #include <stdint.h>
 #include <time.h>
 
-const char *byte_to_binary(int x)
-{
-    static char b[9]; // bits + 1
-    b[0] = '\0';
-
-    int z;
-    for (z = 256; z > 0; z >>= 1) // z = 2 ^ # of bits
-    {
-        strcat(b, ((x & z) == z) ? "1" : "0");
-    }
-
-    return b;
-}
-
-const char *byte_to_binary16(int x)
-{
-    static char b[17]; // bits + 1
-    b[0] = '\0';
-
-    int z;
-    for (z = 65536; z > 0; z >>= 1) // z = 2 ^ # of bits
-    {
-        strcat(b, ((x & z) == z) ? "1" : "0");
-    }
-
-    return b;
-}
-
 int getSectorValue(char * p, int i) {
 	int offset = (i * 3) / 2;
 	char * fat = p + 512; // skip first sector to reach FAT
@@ -153,9 +125,11 @@ int addRootDirEntry(char * p, char * src, int offset, char * filename, int files
 	time_t rawtime;
   struct tm *info;
 
+	// getting local time
   time(&rawtime);
   info = localtime(&rawtime);
   
+	// manipulating variables to fit requirements
   uint16_t seconds = info->tm_sec / 2;
   uint16_t minutes = info->tm_min;
   uint16_t hours = info->tm_hour;
@@ -163,6 +137,7 @@ int addRootDirEntry(char * p, char * src, int offset, char * filename, int files
   uint16_t month = info->tm_mon + (int) 1;
   uint16_t year = info->tm_year - (int) 80;
   
+	// formatting time as required
   uint16_t timebits = 0;
   timebits |= hours;
   timebits = timebits << 6;
@@ -170,13 +145,13 @@ int addRootDirEntry(char * p, char * src, int offset, char * filename, int files
   timebits = timebits << 5;
   timebits |= seconds;
   
+	// formatting date as required
   uint16_t datebits = 0;
   datebits |= year;
   datebits = datebits << 4;
   datebits |= month;
   datebits = datebits << 5;
   datebits |= day;
-
 
   // setting creation time
   p[offset + 14] = timebits & 0xff;
@@ -284,7 +259,6 @@ int main (int argc, char *argv[]) {
 		fstat(fd2, &sf2);
 		
 		src_size = sf2.st_size;
-		printf("file size %d\n", src_size);
 		src = mmap(NULL, src_size, PROT_READ, MAP_SHARED, fd2, 0);
 
 		if (fd = open(argv[1], O_RDWR)) {

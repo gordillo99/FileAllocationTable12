@@ -100,6 +100,9 @@ int findFile(char * p, char * f_to_find, int * size) {
 	int i;
 	char * p_copy = p + (19*512); // move to sector 19 (root directory)
 	char name[40];
+	int j;
+
+	for (j = 0; j < strlen(f_to_find); j++) f_to_find[j] = toupper(f_to_find[j]);
 	
 	for (i = 0; i < 224; i++) {
 		char c = p_copy[i*32];

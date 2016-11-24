@@ -45,11 +45,27 @@ void printRootInfo(char * p) {
 			
 			// building name
 			int j;
-			for (j = 0; j < 8; j++) name[j] = p_copy[i*32 + j];
-			name[j] = '.';
-			j++;
-			for (; j < 12; j++) name[j] = p_copy[i*32 + j - 1]; // move p_copy one back since name is ahead because of the .
-			
+			int diff = 0;
+			for (j = 0; j < 8; j++) {
+				if (p_copy[i*32 + j] == ' ') break; 
+				name[j] = p_copy[i*32 + j];
+			}
+			if (p_copy[i*32 + 8] != ' ' && p_copy[i*32 + 9] != ' ' && p_copy[i*32 + 10] != ' ') {	
+				name[j] = '.';
+				j++;
+				diff = 1;
+
+				int local_j = j;
+				int space_counter = 0;
+				for (; j < 12; j++) {
+					if (p_copy[i*32 + j - diff] == ' ') space_counter++; 
+				}				
+				j =  local_j;
+				for (; j < 12; j++) {
+					if (p_copy[i*32 + j - diff] != ' ') name[j - space_counter] = p_copy[i*32 + j - diff]; // move p_copy one back since name is ahead because of the .
+				}
+			}
+
 			// file or directory code
 			if ((p_copy[i*32 + 11] == 0x10)) type = 'D';
 			else type = 'F';
@@ -75,13 +91,15 @@ void printRootInfo(char * p) {
 			int month = 0;
 			int year = 0;
 			
+			// masking and shifting
 			year = (date & 0xFE00) >> 9;
 			month = (date & 0x1E0) >> 5;
 			day = date & 0x1f;
 			
-			sprintf(createDate, "%u:%u %u-%u-%u", hours, minutes, 1980 + year, month, day);
+			sprintf(createDate, "%04u-%02u-%02u %02u:%02u", 1980 + year, month, day, hours, minutes); // save format to variable
 			
-			printf("%c %u %s %s\n", type, size, name, createDate);
+			printf("%c %10u %20s %s\n", type, size, name, createDate); // display results
+
 		}
 	}
 }
