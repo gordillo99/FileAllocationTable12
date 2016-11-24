@@ -12,24 +12,6 @@
 #include <stdint.h>
 #include <time.h>
 
-/*
-open(check) file to be copied in current dir
-grab its file size & related info
-char *src = mmap(file, ... file size)
-open disk file
-get disk size
-char *dest = mmap(disk file, ... disk size)
-check for free space in disk
-Add file entry in disk root dir 
-copy file from src->dest, reading sector by sector, update FAT table in the meantime
-
-munmap(disk file)
-munmap(file)
-
-close disk file
-close file
-*/
-
 const char *byte_to_binary(int x)
 {
     static char b[9]; // bits + 1
@@ -237,7 +219,7 @@ int addRootDirEntry(char * p, char * src, int offset, char * filename, int files
 	p[offset + 26] = availFAT & 0xff;
   availFAT = availFAT >> 8;
   p[offset + 27] = availFAT & 0xff;
-	printf("first fat entry: %d\n", fatEntry);
+  
 	return fatEntry;
 }
 
@@ -262,15 +244,12 @@ void writeToFATTable(char* p, int target, int src) {
 		previouslow = previouslow | low;
 		p[512 + (3*target)/2] = previouslow & 0xff;
 	}
-	
-	printf("wrote %d to fat entry %d\n", getSectorValue(p, target), target);
 }
  
 void writeToDataArea(char * p, char * src, int size, int FATEntry) {
 	int bytesWritten = 0;
 	int i;
 	int previousFATEntry = -1;
-	printf("size %d\n", size);
 
 	while (bytesWritten < size) {
 		previousFATEntry = FATEntry;
@@ -280,11 +259,9 @@ void writeToDataArea(char * p, char * src, int size, int FATEntry) {
 			if (bytesWritten == size) { break; }
 			p[physicalCluster*512 + i] = src[i + refPoint] & 0xff;
 		}
-		printf("so far %d bytes have been written\n", bytesWritten);
+
 		if (bytesWritten == size) { break; }
 		FATEntry = findNextAvailFATEntry(p);
-		printf("prev avail fat entry: %d\n", previousFATEntry);
-		printf("next avail fat entry: %d\n", FATEntry);
 		writeToFATTable(p, (uint16_t) previousFATEntry, (uint16_t) FATEntry);
 	}
 	
