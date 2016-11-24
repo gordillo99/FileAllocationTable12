@@ -78,11 +78,9 @@ void printRootInfo(char * p) {
 
 			int hours = 0;
 			int minutes = 0;
-			//int seconds = 0;
 			
 			hours = (time & 0xF800) >> 11;
 			minutes = (time & 0x7E0) >> 5;
-			//seconds = time & 0x1f;
 			
 			//create date 
 			date = (p_copy[i*32 + 16] & 0xff) | ((p_copy[i*32 + 17] & 0xff) << 8);
