@@ -57,15 +57,12 @@ int getSectorValue(char * p, int i) {
 }
 
 int getTotalNumberOfSectors(char * p) {
-	printf("%c\n", p[454]);
-	printf("waaat\n");
 	return (int) (p[19] | p[20] << 8);
 }
 
 int getFreeSize(int totalNumberOfSectors, char * p) {
 	int count = 1;
 	int i;
-	printf("getting free size\n");
 	for (i = 2; i < totalNumberOfSectors; i++) {
 		if (getSectorValue(p, i) == 0) {
 			count++;
@@ -88,7 +85,10 @@ int findFirstAvailableRootEntry(char * p) {
 
 int hasExtension(char * filename, int namelen) {
 	int i;
-	for (i = 0; i < namelen; i++) if (*(filename + i) == '.') return 1;
+	for (i = 0; i < namelen; i++) {
+		printf("character %c", *(filename + i));
+		if (*(filename + i) == '.') return 1;
+	}
 	return 0;
 }
 
@@ -107,7 +107,7 @@ int addRootDirEntry(char * p, char * src, int offset, char * filename, int files
 	int ext_index;
 	int namelen = strlen(filename);
 	int hasExt = hasExtension(filename, namelen);
-	
+	printf("has ext %d\n", hasExt);
 	// add filename
 	if (namelen > 12) { printf("Error: filename too big"); exit(EXIT_FAILURE); }
 	
@@ -120,8 +120,8 @@ int addRootDirEntry(char * p, char * src, int offset, char * filename, int files
 		int j;
 		//for () 
 	} else {
-		for (i = 0; i < namelen; i++) p[offset + i] = toupper(*(filename + i)) & 0xff;
-		for (; i < 11; i++) p[offset + i] = 0x20; // insert spaces until reaching end
+		for (i = 0; i < namelen; i++) { p[offset + i] = toupper(*(filename + i)) & 0xff; printf("writing %c", toupper(*(filename + i))); }
+		for (; i < 11; i++) { p[offset + i] = 0x20; printf("writing space\n"); } // insert spaces until reaching end
 	}
 	
 	printf("wrote filename \n");
@@ -264,10 +264,9 @@ int main (int argc, char *argv[]) {
 			p = mmap(NULL, sf.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 			int totalNumSectors = getTotalNumberOfSectors(p);
 			if (src_size > getFreeSize(totalNumSectors, p)) { printf("Error: Not enough free space in disk image."); exit(EXIT_FAILURE); }
-			printf("about to look for available root entry\n");
 			int offsetFirstAvailDir = findFirstAvailableRootEntry(p);
 			printf("%d offsetFirstAvailDir", offsetFirstAvailDir);
-			int firstFATentry = addRootDirEntry(p, src, offsetFirstAvailDir, argv[1], src_size);
+			int firstFATentry = addRootDirEntry(p, src, offsetFirstAvailDir, argv[2], src_size);
 			writeToDataArea(p, src, src_size, firstFATentry);
 		}
 	}
