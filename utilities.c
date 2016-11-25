@@ -53,6 +53,66 @@ int getFreeSize(int totalNumberOfSectors, char * p) {
 	return count * 512;
 }
 
+// gets file name for entry in directory
+void getFileName(char * p, int entry, char * name) {
+
+	// building name
+	int j;
+	int i = 0;
+	
+	// get name before extension
+	for (j = 0; j < 8; j++) {
+		if (p[entry*32 + j] != ' ') {
+			name[i] = p[entry*32 + j];
+			i++;
+		}
+	}
+	
+	if (p[entry*32 + 10] != ' ' && p[entry*32 + 9] != ' ' && p[entry*32 + 8] != ' ') { // if it has an extension
+		name[i] = '.';
+		i++;
+	}
+	
+	// get rest of name
+	for (; j < 12; j++) {
+		if (p[entry*32 + j] != ' ') {
+			name[i] = p[entry*32 + j]; // move p_copy one back since name is ahead because of the .
+			i++;
+		}
+	}
+	name[12] = '\0';
+}
+
+// checks through the root directory to see if file exists
+int findFile(char * p, char * f_to_find, int * size) {
+	int fileFound = -1;
+	int i;
+	char * p_copy = p + (19*512); // move to sector 19 (root directory)
+	char name[40];
+	int j;
+
+	// changes name to uppercase
+	for (j = 0; j < strlen(f_to_find); j++) f_to_find[j] = toupper(f_to_find[j]);
+	
+	// checks all the existing files
+	for (i = 0; i < 224; i++) {
+		char c = p_copy[i*32];
+		if ((c & 0xff) == 0x00) { // returns if we reach end of files
+			break;
+		}
+		else if ((c & 0xff) != 0xe5 && !(p_copy[i*32 + 11] & 0x0F) && !(p_copy[i*32 + 11] & 0x08)) {
+			getFileName(p_copy, i, name);
+			if (strcmp(f_to_find, name) == 0)  { // if it's the file we're looking for
+				fileFound = (p_copy[i*32 + 26] & 0xff) | (p_copy[i*32 + 27] & 0xff) << 8;
+				*size = ((p_copy[i*32 + 28] & 0xff) | ((p_copy[i*32 + 29] & 0xff) << 8) | ((p_copy[i*32 + 30] & 0xff) << 16) | ((p_copy[i*32 + 31]  & 0xff) << 24));
+				break;
+			}
+		}
+	}
+	return fileFound; // return the first logical cluster 
+}
+
+
 // helper methods used for debugging
 // converting bytes to binary (8 bits)
 const char *byte_to_binary(int x)

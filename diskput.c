@@ -219,33 +219,36 @@ int main (int argc, char *argv[]) {
 	char * p;
 	char * src;
 	int src_size = 0;
+	int fileExists;
+	int dummyvar = 0;
 	
 	if (fd2 = open(argv[2], O_RDONLY)) { // opens file
 		
 		// error checking
-		if (fd2 < 0) { printf("Error: File %s not found.", argv[2]); exit(EXIT_FAILURE); }
-		if (fstat(fd2, &sf2) ==  -1) { printf("Error: couldn't get file stats."); exit(EXIT_FAILURE); };
+		if (fd2 < 0) { printf("Error: File %s not found.\n", argv[2]); exit(EXIT_FAILURE); }
+		if (fstat(fd2, &sf2) ==  -1) { printf("Error: couldn't get file stats.\n"); exit(EXIT_FAILURE); };
 		
 		src_size = sf2.st_size;
 		src = mmap(NULL, src_size, PROT_READ, MAP_SHARED, fd2, 0); // maps file
-		if ((int) *src == -1) { printf("Error: file mapping failed."); exit(EXIT_FAILURE); }		
+		if ((int) *src == -1) { printf("Error: file mapping failed.\n"); exit(EXIT_FAILURE); }		
 
 		if (fd = open(argv[1], O_RDWR)) { // opens disk file
-			if (fstat(fd, &sf) ==  -1) { printf("Error: couldn't get file stats."); exit(EXIT_FAILURE); };
+			if (fstat(fd, &sf) ==  -1) { printf("Error: couldn't get file stats.\n"); exit(EXIT_FAILURE); };
 			p = mmap(NULL, sf.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0); // maps disk file
-			if ((int) *p == -1) { printf("Error: file mapping failed."); exit(EXIT_FAILURE); }		
+			if ((int) *p == -1) { printf("Error: file mapping failed.\n"); exit(EXIT_FAILURE); }		
 			int totalNumSectors = getTotalNumberOfSectors(p); // gets total number of sectors
-			if (src_size > getFreeSize(totalNumSectors, p)) { printf("Error: Not enough free space in disk image."); exit(EXIT_FAILURE); }
+			if (src_size > getFreeSize(totalNumSectors, p)) { printf("Error: Not enough free space in disk image.\n"); exit(EXIT_FAILURE); }
+			if(findFile(p, argv[2], &dummyvar) != -1) { printf("Error: File with that name already exists.\n"); exit(EXIT_FAILURE); }
 			int offsetFirstAvailDir = findFirstAvailableRootEntry(p); // finds first available root entry for new file
 			int firstFATentry = addRootDirEntry(p, src, offsetFirstAvailDir, argv[2], src_size); // writes the root dir entry for new file
 			writeToDataArea(p, src, src_size, firstFATentry); // writes file data to data region
 		}
 	}
 	
-	if (munmap(src, src_size) == -1) { printf("Error: file mapping failed."); exit(EXIT_FAILURE); }
-	if (munmap(p, sf.st_size) == -1) { printf("Error: file mapping failed."); exit(EXIT_FAILURE); }
-	if (close(fd) == -1) {printf("Error: couldn't close file."); exit(EXIT_FAILURE);};
-	if (close(fd2) == -1) {printf("Error: couldn't close file."); exit(EXIT_FAILURE);};
+	if (munmap(src, src_size) == -1) { printf("Error: file mapping failed.\n"); exit(EXIT_FAILURE); }
+	if (munmap(p, sf.st_size) == -1) { printf("Error: file mapping failed.\n"); exit(EXIT_FAILURE); }
+	if (close(fd) == -1) {printf("Error: couldn't close file.\n"); exit(EXIT_FAILURE);};
+	if (close(fd2) == -1) {printf("Error: couldn't close file.\n"); exit(EXIT_FAILURE);};
 	
 	return 0;
 }

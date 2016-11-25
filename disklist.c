@@ -93,16 +93,15 @@ int main (int argc, char *argv[]) {
 	char * p;
 	
 	if (fd = open(argv[1], O_RDONLY)) { // open disk file
-		if (fd < 0) { printf("Error: File %s not found.", argv[1]); exit(EXIT_FAILURE); }
-		if (fstat(fd, &sf) ==  -1) { printf("Error: couldn't get file stats."); exit(EXIT_FAILURE); };
+		if (fd < 0) { printf("Error: File %s not found.\n", argv[1]); exit(EXIT_FAILURE); }
+		if (fstat(fd, &sf) ==  -1) { printf("Error: couldn't get file stats.\n"); exit(EXIT_FAILURE); };
 		p = mmap(NULL, sf.st_size, PROT_READ, MAP_SHARED, fd, 0); // map disk file
-		if ((int) *p == -1) { printf("Error: file mapping failed."); exit(EXIT_FAILURE); }		
+		if ((int) *p == -1) { printf("Error: file mapping failed.\n"); exit(EXIT_FAILURE); }		
 		printRootInfo(p); // print info from root directory
 	}
 
-	if (close(fd) == -1) {printf("Error: couldn't close file."); exit(EXIT_FAILURE);};
-	munmap(p, sf.st_size);
-	if (munmap(p, sf.st_size) == -1) { printf("Error: file mapping failed."); exit(EXIT_FAILURE); }
+	if (close(fd) == -1) {printf("Error: couldn't close file.\n"); exit(EXIT_FAILURE);};
+	if (munmap(p, sf.st_size) == -1) { printf("Error: file mapping failed.\n"); exit(EXIT_FAILURE); }
 
 	return 0;
 }
