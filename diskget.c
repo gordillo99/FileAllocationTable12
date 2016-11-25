@@ -70,9 +70,9 @@ int getSectorValue(char * p, int i) {
 }
 
 void getFileName(char * p, int entry, char * name) {
-	int a = 0;	
+	/*int a = 0;	
 	for (;a < 11;a++) printf("%c", p[entry*32 + a]);
-	printf("\n");	
+	printf("\n"); */	
 
 	// building name
 	int j;
