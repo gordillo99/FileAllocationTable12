@@ -10,53 +10,13 @@
 #include <sys/stat.h>
 #include <sys/mman.h>
 #include <stdint.h>
+#include "utilities.h"
 
 void getOSName(char * p, char * osName) {
 	int i;
 	for (i = 0; i < 8; i++) {
 		osName[i] = p[3 + i];
 	}
-}
-
-int getTotalNumberOfSectors(char * p) {
-	return (int) (p[19] | p[20] << 8);
-}
-
-int getSectorValue(char * p, int i) {
-	int offset = (i * 3) / 2;
-	char * fat = p + 512; // skip first sector to reach FAT
-	uint16_t value = 0;
-
-	if ((i % 2) == 0) {
-		int low = fat[offset + 1] & 0xff;
-		int high = fat[offset] & 0xff;
-		value = value | low;
-		value = value << 8;
-		value = value & 0xF00;
-		value = value | high;
-
-	} else {
-		int low = fat[offset + 1] & 0xff;
-		int high = fat[offset] & 0xff;
-		value = value | low;
-		value = value << 8;
-		value = value & 0xFF00;
-		value = value | high;
-		value = value >> 4;
-	}
-
-	return value;
-}
-
-int getFreeSize(int totalNumberOfSectors, char * p) {
-	int count = 0;
-	int i;
-	for (i = 2; i < totalNumberOfSectors; i++) {
-		if (getSectorValue(p, i) == 0) {
-			count++;
-		}
-	}
-	return count * 512;
 }
 
 void getLabel(char * p, char * label) {

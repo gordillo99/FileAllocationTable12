@@ -10,6 +10,7 @@
 #include <sys/stat.h>
 #include <sys/mman.h>
 #include <stdint.h>
+#include "utilities.h"
 
 void printRootInfo(char * p) {
 	int count = 0;

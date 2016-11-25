@@ -10,69 +10,9 @@
 #include <sys/stat.h>
 #include <sys/mman.h>
 #include <stdint.h>
-
-// helper method used for debugging
-// converting bytes to binary
-const char *byte_to_binary(int x)
-{
-    static char b[9]; // bits + 1
-    b[0] = '\0';
-
-    int z;
-    for (z = 256; z > 0; z >>= 1) // z = 2 ^ # of bits
-    {
-        strcat(b, ((x & z) == z) ? "1" : "0");
-    }
-
-    return b;
-}
-
-const char *byte_to_binary16(int x)
-{
-    static char b[17]; // bits + 1
-    b[0] = '\0';
-
-    int z;
-    for (z = 65536; z > 0; z >>= 1) // z = 2 ^ # of bits
-    {
-        strcat(b, ((x & z) == z) ? "1" : "0");
-    }
-
-    return b;
-}
-
-int getSectorValue(char * p, int i) {
-	int offset = (i * 3) / 2;
-	char * fat = p + 512; // skip first sector to reach FAT
-	uint16_t value = 0;
-
-	if ((i % 2) == 0) {
-		int low = fat[offset + 1] & 0xff;
-		int high = fat[offset] & 0xff;
-
-			value = value | low;
-			value = value << 8;
-			value = value & 0xF00;
-			value = value | high;
-
-	} else {
-		int low = fat[offset + 1] & 0xff;
-		int high = fat[offset] & 0xff;
-	
-			value = value | low;
-			value = value << 8;
-			value = value & 0xFF00;
-			value = value | high;
-			value = value >> 4;
-	}
-
-	return value;
-}
+#include "utilities.h"
 
 void getFileName(char * p, int entry, char * name) {
-	/*int a = 0;	
-	for (;a < 11;a++) printf("%c", p[entry*32 + a]);
-	printf("\n"); */	
 
 	// building name
 	int j;
