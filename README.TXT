@@ -1,6 +1,11 @@
 To compile code, have the following files in the same directory:
 
-
+diskget.c
+diskinfo.c
+disklist.c
+diskput.c
+utilities.c
+utilities.h
 makefile
 
 Then, run make in the directory where all the files are.
