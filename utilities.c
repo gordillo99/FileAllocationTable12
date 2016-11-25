@@ -12,12 +12,13 @@
 #include <stdint.h>
 #include <time.h>
 
+// gets the sector value for the FAT entry
 int getSectorValue(char * p, int i) {
 	int offset = (i * 3) / 2;
 	char * fat = p + 512; // skip first sector to reach FAT
 	uint16_t value = 0;
 
-	if ((i % 2) == 0) {
+	if ((i % 2) == 0) { // for even entries
 		int low = fat[offset + 1] & 0xff;
 		int high = fat[offset] & 0xff;
 		value = value | low;
@@ -25,7 +26,7 @@ int getSectorValue(char * p, int i) {
 		value = value & 0xF00;
 		value = value | high;
 
-	} else {
+	} else { // for odd entries
 		int low = fat[offset + 1] & 0xff;
 		int high = fat[offset] & 0xff;
 		value = value | low;
@@ -38,23 +39,22 @@ int getSectorValue(char * p, int i) {
 	return value;
 }
 
+// gets total number of sectors in disk
 int getTotalNumberOfSectors(char * p) {
 	return (int) (p[19] | p[20] << 8);
 }
 
+// gets free size in disk
 int getFreeSize(int totalNumberOfSectors, char * p) {
 	int count = 0;
 	int i;
-	for (i = 2; i < totalNumberOfSectors; i++) {
-		if (getSectorValue(p, i) == 0) {
-			count++;
-		}
-	}
+	// start at 2 since the first 2 entries are reserved
+	for (i = 2; i < totalNumberOfSectors; i++) if (getSectorValue(p, i) == 0) count++;
 	return count * 512;
 }
 
-// helper method used for debugging
-// converting bytes to binary
+// helper methods used for debugging
+// converting bytes to binary (8 bits)
 const char *byte_to_binary(int x)
 {
     static char b[9]; // bits + 1
@@ -69,6 +69,7 @@ const char *byte_to_binary(int x)
     return b;
 }
 
+// converting bytes to binary (16 bits)
 const char *byte_to_binary16(int x)
 {
     static char b[17]; // bits + 1

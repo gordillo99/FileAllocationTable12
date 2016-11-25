@@ -13,39 +13,39 @@
 #include <time.h>
 #include "utilities.h"
 
+// find the first available entry in the root
 int findFirstAvailableRootEntry(char * p) {
 	int i;
 	char * p_copy = p + (19*512); // move to sector 19 (root directory)
 	for (i = 0; i < 224; i++) {
 		char c = p_copy[i*32];
-		if ((c & 0xff) == 0x00) {
-			return (19*512) + (i*32);
-		}
+		// if we hit zero, this is the next avail entry
+		if ((c & 0xff) == 0x00) return (19*512) + (i*32);
 	}
-	return -1; 
+	return -1; // if not found
 }
 
+// returns true if the file has an extension (has . in name)
 int hasExtension(char * filename, int namelen) {
 	int i;
-	for (i = 0; i < namelen; i++) {
-		if (*(filename + i) == '.') return 1;
-	}
+	for (i = 0; i < namelen; i++) if (*(filename + i) == '.') return 1;
 	return 0;
 }
 
+// finds the first available FAT entry
 int findAvailFATEntry(char * p) {
 	int i = 2;
-	int totalNumberOfSectors = (int) (p[19] | p[20] << 8);
+	int totalNumberOfSectors = getTotalNumberOfSectors(p);
 	
-	for (; i < totalNumberOfSectors; i++) {
-		if (getSectorValue(p, i) == 0) break;
-	}
+	// go on until you hit 0
+	for (; i < totalNumberOfSectors; i++) if (getSectorValue(p, i) == 0) break;
 	return i;
 }
 
+// finds the second available FAT entry
 int findNextAvailFATEntry(char * p) {
 	int i = 2;
-	int totalNumberOfSectors = (int) (p[19] | p[20] << 8);
+	int totalNumberOfSectors = (int) getTotalNumberOfSectors(p);
 	int flag = 0;
 	
 	for (; i < totalNumberOfSectors; i++) {
@@ -55,7 +55,7 @@ int findNextAvailFATEntry(char * p) {
 	return i;
 }
 
-
+// adds the root directory info about the file 
 int addRootDirEntry(char * p, char * src, int offset, char * filename, int filesize) {
 	int i;
 	int ext_index;
@@ -69,6 +69,7 @@ int addRootDirEntry(char * p, char * src, int offset, char * filename, int files
 		for (ext_index = 0; ext_index < namelen; ext_index++) if (filename[ext_index] == '.') break;
 		for (i = 0; i < ext_index; i++) p[offset + i] = toupper(*(filename + i)) & 0xff;
 
+		// if spaces are needed, add them
 		if (11 - ext_index > 3) {
 			for (; i < 8; i++) { p[offset + i] = 0x20; } // insert spaces until reaching ext
 		}
@@ -162,9 +163,11 @@ int addRootDirEntry(char * p, char * src, int offset, char * filename, int files
 	return fatEntry;
 }
 
+// writes the target value into the FAT entry number src
 void writeToFATTable(char* p, int target, int src) {
 
-	if (target % 2 == 0) {
+	// bit manipulation to enter info in 12 bits
+	if (target % 2 == 0) { // if target is even
 		uint8_t low = src & 0xff;
 		uint8_t high = (src >> 8) & 0xf;
 		p[512 + (3*target)/2] = low & 0xff;
@@ -172,12 +175,11 @@ void writeToFATTable(char* p, int target, int src) {
 		previoushigh &= 0xf0;
 		previoushigh |= high;
 		p[512 + (3*target)/2 + 1] = previoushigh & 0xff;
-	} else {
+	} else { // if target is odd
 		uint8_t high = (src >> 4) & 0xff;
 		uint8_t low = src & 0xf;
 		p[512 + (3*target)/2 + 1] = high & 0xff;
 		uint8_t previouslow = p[512 + (3*target)/2];
-		
 		previouslow &= 0xf;
 		low = (low << 4);
 		previouslow = previouslow | low;
@@ -185,25 +187,27 @@ void writeToFATTable(char* p, int target, int src) {
 	}
 }
  
+// writes to data area
 void writeToDataArea(char * p, char * src, int size, int FATEntry) {
 	int bytesWritten = 0;
 	int i;
 	int previousFATEntry = -1;
 
-	while (bytesWritten < size) {
+	while (bytesWritten < size) { // while we haven't written all the bytes in the file
 		previousFATEntry = FATEntry;
-		int physicalCluster = 33 + FATEntry - 2;
+		int physicalCluster = 33 + FATEntry - 2; // map to physical address
 		int refPoint = bytesWritten;
 		for (i = 0; i < 512 ; i++, bytesWritten++) {
-			if (bytesWritten == size) { break; }
+			if (bytesWritten == size) { break; } // break if done
 			p[physicalCluster*512 + i] = src[i + refPoint] & 0xff;
 		}
 
-		if (bytesWritten == size) { break; }
-		FATEntry = findNextAvailFATEntry(p);
-		writeToFATTable(p, (uint16_t) previousFATEntry, (uint16_t) FATEntry);
+		if (bytesWritten == size) { break; } // break from outer loop when done
+		FATEntry = findNextAvailFATEntry(p); // find next FAT entry
+		writeToFATTable(p, (uint16_t) previousFATEntry, (uint16_t) FATEntry); // update FAT table
 	}
 	
+	// indicate this is the last entry for the file
 	writeToFATTable(p, previousFATEntry, 4095);
 }
 
@@ -216,29 +220,32 @@ int main (int argc, char *argv[]) {
 	char * src;
 	int src_size = 0;
 	
-	if (fd2 = open(argv[2], O_RDONLY)) {
+	if (fd2 = open(argv[2], O_RDONLY)) { // opens file
 		
+		// error checking
 		if (fd2 < 0) { printf("Error: File %s not found.", argv[2]); exit(EXIT_FAILURE); }
-		fstat(fd2, &sf2);
+		if (fstat(fd2, &sf2) ==  -1) { printf("Error: couldn't get file stats."); exit(EXIT_FAILURE); };
 		
 		src_size = sf2.st_size;
-		src = mmap(NULL, src_size, PROT_READ, MAP_SHARED, fd2, 0);
+		src = mmap(NULL, src_size, PROT_READ, MAP_SHARED, fd2, 0); // maps file
+		if ((int) *src == -1) { printf("Error: file mapping failed."); exit(EXIT_FAILURE); }		
 
-		if (fd = open(argv[1], O_RDWR)) {
-			fstat(fd, &sf);
-			p = mmap(NULL, sf.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-			int totalNumSectors = getTotalNumberOfSectors(p);
+		if (fd = open(argv[1], O_RDWR)) { // opens disk file
+			if (fstat(fd, &sf) ==  -1) { printf("Error: couldn't get file stats."); exit(EXIT_FAILURE); };
+			p = mmap(NULL, sf.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0); // maps disk file
+			if ((int) *p == -1) { printf("Error: file mapping failed."); exit(EXIT_FAILURE); }		
+			int totalNumSectors = getTotalNumberOfSectors(p); // gets total number of sectors
 			if (src_size > getFreeSize(totalNumSectors, p)) { printf("Error: Not enough free space in disk image."); exit(EXIT_FAILURE); }
-			int offsetFirstAvailDir = findFirstAvailableRootEntry(p);
-			int firstFATentry = addRootDirEntry(p, src, offsetFirstAvailDir, argv[2], src_size);
-			writeToDataArea(p, src, src_size, firstFATentry);
+			int offsetFirstAvailDir = findFirstAvailableRootEntry(p); // finds first available root entry for new file
+			int firstFATentry = addRootDirEntry(p, src, offsetFirstAvailDir, argv[2], src_size); // writes the root dir entry for new file
+			writeToDataArea(p, src, src_size, firstFATentry); // writes file data to data region
 		}
 	}
 	
-	munmap(src, src_size);
-	munmap(p, sf.st_size);
-	close(fd);
-	close(fd2);
+	if (munmap(src, src_size) == -1) { printf("Error: file mapping failed."); exit(EXIT_FAILURE); }
+	if (munmap(p, sf.st_size) == -1) { printf("Error: file mapping failed."); exit(EXIT_FAILURE); }
+	if (close(fd) == -1) {printf("Error: couldn't close file."); exit(EXIT_FAILURE);};
+	if (close(fd2) == -1) {printf("Error: couldn't close file."); exit(EXIT_FAILURE);};
 	
 	return 0;
 }
