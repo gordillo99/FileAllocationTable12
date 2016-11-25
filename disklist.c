@@ -11,22 +11,6 @@
 #include <sys/mman.h>
 #include <stdint.h>
 
-// helper method used for debugging
-// converting bytes to binary
-const char *byte_to_binary(int x)
-{
-    static char b[17]; // bits + 1
-    b[0] = '\0';
-
-    int z;
-    for (z = 65536; z > 0; z >>= 1) // z = 2 ^ # of bits
-    {
-        strcat(b, ((x & z) == z) ? "1" : "0");
-    }
-
-    return b;
-}
-
 void printRootInfo(char * p) {
 	int count = 0;
 	int i;

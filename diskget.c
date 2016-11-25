@@ -41,7 +41,6 @@ const char *byte_to_binary16(int x)
     return b;
 }
 
-
 int getSectorValue(char * p, int i) {
 	int offset = (i * 3) / 2;
 	char * fat = p + 512; // skip first sector to reach FAT
@@ -71,9 +70,13 @@ int getSectorValue(char * p, int i) {
 }
 
 void getFileName(char * p, int entry, char * name) {
+	int a = 0;	
+	for (;a < 11;a++) printf("%c", p[entry*32 + a]);
+	printf("\n");	
+
 	// building name
 	int j;
-	int i = 0; 
+	int i = 0;
 	for (j = 0; j < 8; j++) {
 		if (p[entry*32 + j] != ' ') {
 			name[i] = p[entry*32 + j];

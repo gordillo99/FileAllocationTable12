@@ -108,11 +108,14 @@ int addRootDirEntry(char * p, char * src, int offset, char * filename, int files
 	if (hasExt) {
 		for (ext_index = 0; ext_index < namelen; ext_index++) if (filename[ext_index] == '.') break;
 		for (i = 0; i < ext_index; i++) p[offset + i] = toupper(*(filename + i)) & 0xff;
-		if (11 - ext_index != 3) {
-			for (; i < 8; i++) p[offset + i] = 0x20; // insert spaces until reaching ext
+
+		if (11 - ext_index > 3) {
+			for (; i < 8; i++) { p[offset + i] = 0x20; } // insert spaces until reaching ext
 		}
+
 		int j;
-		//for () 
+		// write the extension
+		for (j = ext_index + 1; j < strlen(filename); j++, i++) p[offset + i] = toupper(*(filename + j)) & 0xff;
 	} else {
 		for (i = 0; i < namelen; i++) { p[offset + i] = toupper(*(filename + i)) & 0xff; }
 		for (; i < 11; i++) { p[offset + i] = 0x20; } // insert spaces until reaching end
